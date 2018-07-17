@@ -13,7 +13,9 @@ object Job extends SparkInstrumentedJob {
   def run(args: Array[String]) = {
 
     // Logger.getLogger("org").setLevel(Level.OFF)
-
-    val cluster = new Clustering().run(spark)
+    if (args.length > 1)
+      new Clustering().run(spark, Some(args(0)), Some(args(1)))
+    else
+      new Clustering().run(spark, None, None)
   }
 }

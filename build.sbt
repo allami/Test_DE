@@ -1,3 +1,4 @@
+
 name := "Test_DE"
 
 version := "0.1"
@@ -23,7 +24,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" % "spark-mllib_2.11" % "2.1.0",
   "com.github.kxbmap" %% "configs" % "0.4.4"
 )
-// https://mvnrepository.com/artifact/com.typesafe/config
-libraryDependencies += "com.typesafe" % "config" % "1.2.1"
+
+
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0"
 
 

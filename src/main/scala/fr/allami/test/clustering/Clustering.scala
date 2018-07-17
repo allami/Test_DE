@@ -21,12 +21,14 @@ import org.apache.spark.ml.feature.StandardScaler
 
 class Clustering extends LazyLogging {
 
-  def readJsonFile(spark: SparkSession): DataFrame = {
+  def readJsonFile(spark: SparkSession,
+                   input: Option[String] = None): DataFrame = {
     logger.debug("read json file ")
-    val inputJson = Settings.config.input
+    val resourcesPath = getClass.getResource(Settings.config.input)
+    val inputJson: String = input.getOrElse(resourcesPath.getPath)
     val data = spark.read
       .option("multiline", "true")
-      .json("/Users/allami/Downloads/Test_DE/Brisbane_CityBike.json")
+      .json(inputJson)
     data
   }
 
@@ -34,16 +36,18 @@ class Clustering extends LazyLogging {
     *
     * @param spark
     */
-  def run(spark: SparkSession): Unit = {
+  def run(spark: SparkSession,
+          input: Option[String] = None,
+          output: Option[String] = None): Unit = {
     import org.apache.spark.sql.functions._
-    val vectors = toVector(prepare(readJsonFile(spark)))
+    val vectors = toVector(prepare(readJsonFile(spark, input)))
     val model = build(vectors)
     //  println(InverseIndexer(prepare(readJsonFile(spark))).show(34))
-
-    predict(vectors, model).saveAsTextFile("/tmp/out")
+    val out: String = output.getOrElse("/tmp/output")
+    predict(vectors, model).saveAsTextFile(out)
 
     println(
-      InverseIndexer(prepare(readJsonFile(spark)))
+      InverseIndexer(prepare(readJsonFile(spark, input)))
         .withColumn("id", monotonicallyIncreasingId)
         .where(col("id") === 1)
         .show(34))
