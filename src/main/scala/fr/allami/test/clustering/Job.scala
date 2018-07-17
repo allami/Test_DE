@@ -1,6 +1,6 @@
 package fr.allami.test.clustering
 
-import fr.allami.test.utils.{SparkEnv, SparkInstrumentedJob}
+import fr.allami.test.utils.SparkInstrumentedJob
 //import org.apache.log4j.{Level, Logger}
 
 object Job extends SparkInstrumentedJob {

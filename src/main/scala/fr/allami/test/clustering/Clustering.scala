@@ -1,29 +1,19 @@
 package fr.allami.test.clustering
 
-import com.typesafe.scalalogging.{LazyLogging, StrictLogging}
 import fr.allami.test.config._
-import org.apache.spark
-import org.apache.spark.ml.feature.{IndexToString, Normalizer, StringIndexer}
-import org.apache.spark.sql
-import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.apache.spark.sql.Column
-import org.apache.spark.sql.types.{DataType, DateType, TimestampType}
-import org.apache.spark.sql.functions.{col, udf}
-import fr.allami.test.config.Settings._
+import org.apache.spark.ml.feature.{IndexToString, StringIndexer}
 import org.apache.spark.mllib.clustering.BisectingKMeansModel
-import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
-// $example on$
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.mllib.clustering.BisectingKMeans
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.ml.feature.StandardScaler
 
-class Clustering extends LazyLogging {
+class Clustering {
 
   def readJsonFile(spark: SparkSession,
                    input: Option[String] = None): DataFrame = {
-    logger.debug("read json file ")
+
     val resourcesPath = getClass.getResource(Settings.config.input)
     val inputJson: String = input.getOrElse(resourcesPath.getPath)
     val data = spark.read
@@ -43,18 +33,28 @@ class Clustering extends LazyLogging {
     val vectors = toVector(prepare(readJsonFile(spark, input)))
     val model = build(vectors)
     //  println(InverseIndexer(prepare(readJsonFile(spark))).show(34))
-    val out: String = output.getOrElse("/tmp/output")
-    predict(vectors, model).saveAsTextFile(out)
+    val out: String = output.getOrElse("/tmp/cluster-")
+    val inversedIndexer = InverseIndexer(prepare(readJsonFile(spark, input)))
+      .withColumn("id", monotonicallyIncreasingId)
+    predict(vectors, model).collect().map {
+      case (cluster, instances) => {
+        instances.foreach { instance =>
+          inversedIndexer
+            .where(col("id") === instance)
+            .coalesce(1)
+            .write
+            .mode(SaveMode.Append)
+            .json(out + cluster)
 
-    println(
-      InverseIndexer(prepare(readJsonFile(spark, input)))
-        .withColumn("id", monotonicallyIncreasingId)
-        .where(col("id") === 1)
-        .show(34))
+        }
+      }
+
+    }
+
   }
 
   /**
-    *
+    * build a clustering model
     * @param data
     * @return
     */
@@ -64,7 +64,7 @@ class Clustering extends LazyLogging {
   }
 
   /**
-    *
+    * preparation of data by removing unused data and converting categorical features
     * @param data
     * @return
     */
@@ -82,7 +82,7 @@ class Clustering extends LazyLogging {
   }
 
   /**
-    *
+    * converting categorical feature to double
     * @param data
     * @return
     */
@@ -109,7 +109,7 @@ class Clustering extends LazyLogging {
   }
 
   /**
-    *
+    * returning back the inital features
     * @param data
     * @return
     */
@@ -128,7 +128,7 @@ class Clustering extends LazyLogging {
   }
 
   /**
-    *
+    * converting to vector
     * @param data
     * @return
     */
@@ -152,6 +152,7 @@ class Clustering extends LazyLogging {
   }
 
   /**
+    * passing data to the model to generate clustering
     *
     * @param data
     * @param model
@@ -167,7 +168,4 @@ class Clustering extends LazyLogging {
 
   }
 
-  def save(cluster: Int, data: RDD[Iterable[Long]], path: String): Unit = {
-    data.saveAsTextFile(path)
-  }
 }
